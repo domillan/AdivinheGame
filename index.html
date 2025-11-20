@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo: Deslize e Adivinhe</title>
+    <style>
+        :root {
+            --primary-color: #6200ea;
+            --secondary-color: #03dac6;
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #ffffff;
+            --hidden-box: #333333;
+            --revealed-box: #ffffff;
+            --revealed-text: #000000;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        #btn-next {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        #btn-next:hover {
+            background-color: #3700b3;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Estilo das caixas de palavras */
+        .word-slot {
+            background-color: var(--hidden-box);
+            border: 2px solid #444;
+            border-radius: 8px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .word-slot:hover {
+            border-color: var(--secondary-color);
+        }
+
+        .word-slot.revealed {
+            background-color: var(--revealed-box);
+            color: var(--revealed-text);
+            border-color: var(--revealed-box);
+            cursor: default;
+            transform: scale(1.02);
+        }
+
+        /* O número indicador (1, 2, 3...) */
+        .slot-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .word-text {
+            display: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .word-slot.revealed .slot-number {
+            display: none;
+        }
+
+        .word-slot.revealed .word-text {
+            display: block;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        /* Estilo da Resposta */
+        .answer-section {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .answer-box {
+            background-color: #ff5252; /* Vermelho para destaque */
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+
+        .answer-box:active {
+            transform: scale(0.98);
+        }
+
+        .answer-text {
+            filter: blur(10px); /* Efeito borrado para esconder */
+            transition: filter 0.4s ease;
+        }
+
+        .answer-box.revealed {
+            background-color: #4caf50; /* Verde quando revela */
+            cursor: default;
+        }
+
+        .answer-box.revealed .answer-text {
+            filter: blur(0);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Slide & Guess Game</h1>
+        <div class="stats-bar">
+            <div class="stat-box">
+                <div class="stat-label">Pergunta ID</div>
+                <div class="stat-value" id="question-id">#00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Pontos Gastos</div>
+                <div class="stat-value" id="score-display">0</div>
+            </div>
+            <button id="btn-next">Próxima Pergunta</button>
+        </div>
+    </header>
+
+    <div class="game-container" id="words-container">
+        </div>
+
+    <div class="answer-section">
+        <div class="answer-box" id="answer-box" onclick="revealAnswer()">
+            <span id="answer-label">Toque para ver a resposta</span>
+            <div class="answer-text" id="answer-text">RESPOSTA AQUI</div>
+        </div>
+    </div>
+
+    <script>
+        // === DADOS DO JOGO (JSON) ===
+        const db = {
+          "perguntas": [
+            { "id": 1, "pergunta": ["Qual", "cidade", "é", "a", "capital", "federal", "do", "Brasil?"], "resposta": "Brasília" },
+            { "id": 2, "pergunta": ["Qual", "é", "o", "maior", "animal", "terrestre", "do", "mundo?"], "resposta": "Elefante" },
+            { "id": 3, "pergunta": ["Que", "cor", "obtemos", "ao", "misturar", "azul", "e", "amarelo?"], "resposta": "Verde" },
+            { "id": 4, "pergunta": ["Quem", "vive", "em", "um", "abacaxi", "no", "fundo", "do", "mar?"], "resposta": "Bob Esponja" },
+            { "id": 5, "pergunta": ["Qual", "é", "o", "nome", "do", "satélite", "natural", "da", "Terra?"], "resposta": "Lua" },
+            { "id": 6, "pergunta": ["Qual", "líquido", "é", "considerado", "essencial", "para", "a", "vida", "humana?"], "resposta": "Água" },
+            { "id": 7, "pergunta": ["Que", "felino", "é", "conhecido", "como", "o", "rei", "da", "selva?"], "resposta": "Leão" },
+            { "id": 8, "pergunta": ["Qual", "país", "é", "chamado", "de", "terra", "do", "sol", "nascente?"], "resposta": "Japão" },
+            { "id": 9, "pergunta": ["O", "que", "usamos", "para", "nos", "proteger", "da", "chuva", "forte?"], "resposta": "Guarda-chuva" },
+            { "id": 10, "pergunta": ["Qual", "é", "a", "estação", "mais", "quente", "do", "ano?"], "resposta": "Verão" },
+            { "id": 11, "pergunta": ["Qual", "super-herói", "se", "veste", "como", "um", "morcego", "para", "lutar?"], "resposta": "Batman" },
+            { "id": 12, "pergunta": ["Qual", "é", "a", "moeda", "oficial", "usada", "nos", "Estados", "Unidos?"], "resposta": "Dólar" },
+            { "id": 13, "pergunta": ["Em", "qual", "ponto", "cardeal", "o", "sol", "nasce", "todos", "os", "dias?"], "resposta": "Leste" },
+            { "id": 14, "pergunta": ["Qual", "inseto", "é", "responsável", "por", "produzir", "o", "mel?"], "resposta": "Abelha" },
+            { "id": 15, "pergunta": ["Qual", "instrumento", "musical", "possui", "teclas", "brancas", "e", "pretas?"], "resposta": "Piano" },
+            { "id": 16, "pergunta": ["Qual", "é", "o", "maior", "planeta", "do", "nosso", "sistema", "solar?"], "resposta": "Júpiter" },
+            { "id": 17, "pergunta": ["Quem", "foi", "levar", "doces", "para", "a", "vovozinha", "na", "floresta?"], "resposta": "Chapeuzinho Vermelho" },
+            { "id": 18, "pergunta": ["Qual", "fruta", "vermelha", "tem", "as", "sementes", "do", "lado", "de", "fora?"], "resposta": "Morango" },
+            { "id": 19, "pergunta": ["O", "que", "usamos", "no", "bolso", "para", "fazer", "ligações?"], "resposta": "Celular" },
+            { "id": 20, "pergunta": ["Qual", "esporte", "é", "jogado", "com", "os", "pés", "e", "uma", "bola?"], "resposta": "Futebol" },
+            { "id": 21, "pergunta": ["O", "que", "é", "o", "oposto", "de", "algo", "estar", "claro?"], "resposta": "Escuro" },
+            { "id": 22, "pergunta": ["Em", "qual", "continente", "fica", "o", "famoso", "Deserto", "do", "Saara?"], "resposta": "África" },
+            { "id": 23, "pergunta": ["Qual", "personagem", "de", "videogame", "é", "um", "encanador", "de", "bigode?"], "resposta": "Mario" },
+            { "id": 24, "pergunta": ["Que", "animal", "tem", "um", "pescoço", "muito", "longo", "e", "alto?"], "resposta": "Girafa" },
+            { "id": 25, "pergunta": ["Onde", "vamos", "para", "assistir", "filmes", "em", "tela", "grande?"], "resposta": "Cinema" },
+            { "id": 26, "pergunta": ["Qual", "idioma", "é", "falado", "oficialmente", "na", "Inglaterra", "e", "EUA?"], "resposta": "Inglês" },
+            { "id": 27, "pergunta": ["Que", "veículo", "tem", "duas", "rodas", "e", "movemos", "com", "pedais?"], "resposta": "Bicicleta" },
+            { "id": 28, "pergunta": ["Em", "qual", "mês", "do", "ano", "nós", "comemoramos", "o", "Natal?"], "resposta": "Dezembro" },
+            { "id": 29, "pergunta": ["Qual", "animal", "rasteja", "e", "não", "possui", "patas", "nem", "pés?"], "resposta": "Cobra" },
+            { "id": 30, "pergunta": ["Qual", "cidade", "é", "conhecida", "como", "a", "capital", "da", "França?"], "resposta": "Paris" },
+            { "id": 31, "pergunta": ["Qual", "bebida", "escura", "é", "feita", "de", "grãos", "torrados?"], "resposta": "Café" },
+            { "id": 32, "pergunta": ["Qual", "herói", "foi", "picado", "por", "uma", "aranha", "radioativa?"], "resposta": "Homem-Aranha" },
+            { "id": 33, "pergunta": ["Qual", "parte", "do", "corpo", "humano", "é", "usada", "para", "enxergar?"], "resposta": "Olhos" },
+            { "id": 34, "pergunta": ["Onde", "guardamos", "a", "comida", "para", "que", "ela", "fique", "gelada?"], "resposta": "Geladeira" },
+            { "id": 35, "pergunta": ["Qual", "país", "europeu", "tem", "o", "formato", "de", "uma", "bota?"], "resposta": "Itália" },
+            { "id": 36, "pergunta": ["Como", "chamamos", "a", "água", "quando", "ela", "vira", "gelo?"], "resposta": "Sólido" },
+            { "id": 37, "pergunta": ["Qual", "animal", "é", "chamado", "de", "melhor", "amigo", "do", "homem?"], "resposta": "Cachorro" },
+            { "id": 38, "pergunta": ["De", "que", "cor", "é", "geralmente", "a", "neve", "que", "cai?"], "resposta": "Branca" },
+            { "id": 39, "pergunta": ["Qual", "meio", "de", "transporte", "anda", "sempre", "sobre", "trilhos?"], "resposta": "Trem" },
+            { "id": 40, "pergunta": ["Quantos", "dias", "tem", "um", "ano", "que", "é", "bissexto?"], "resposta": "366" },
+            { "id": 41, "pergunta": ["Cujo", "nariz", "cresce", "toda", "vez", "que", "conta", "uma", "mentira?"], "resposta": "Pinóquio" },
+            { "id": 42, "pergunta": ["Qual", "oceano", "banha", "toda", "a", "costa", "do", "Brasil?"], "resposta": "Atlântico" },
+            { "id": 43, "pergunta": ["Que", "ferramenta", "é", "usada", "para", "bater", "em", "pregos?"], "resposta": "Martelo" },
+            { "id": 44, "pergunta": ["Qual", "fruta", "é", "amarela,", "curva", "e", "rica", "em", "potássio?"], "resposta": "Banana" },
+            { "id": 45, "pergunta": ["Qual", "navegador", "português", "foi", "o", "descobridor", "do", "Brasil?"], "resposta": "Pedro Álvares Cabral" },
+            { "id": 46, "pergunta": ["Qual", "planeta", "é", "conhecido", "como", "o", "planeta", "vermelho?"], "resposta": "Marte" },
+            { "id": 47, "pergunta": ["Que", "animal", "lento", "carrega", "a", "própria", "casa", "nas", "costas?"], "resposta": "Tartaruga" },
+            { "id": 48, "pergunta": ["O", "que", "usamos", "na", "boca", "para", "mastigar", "os", "alimentos?"], "resposta": "Dentes" },
+            { "id": 49, "pergunta": ["Qual", "esporte", "olímpico", "é", "praticado", "dentro", "de", "uma", "piscina?"], "resposta": "Natação" },
+            { "id": 50, "pergunta": ["Que", "talher", "usamos", "para", "tomar", "sopas", "e", "caldos?"], "resposta": "Colher" },
+            { "id": 51, "pergunta": ["Onde", "fica", "localizada", "a", "famosa", "Estátua", "da", "Liberdade?"], "resposta": "Nova York" },
+            { "id": 52, "pergunta": ["Qual", "animal", "malhado", "nos", "fornece", "leite", "para", "beber?"], "resposta": "Vaca" },
+            { "id": 53, "pergunta": ["O", "que", "colocamos", "no", "rosto", "para", "corrigir", "a", "visão?"], "resposta": "Óculos" },
+            { "id": 54, "pergunta": ["Qual", "é", "a", "palavra", "que", "significa", "o", "oposto", "de", "vitória?"], "resposta": "Derrota" },
+            { "id": 55, "pergunta": ["O", "que", "aparece", "colorido", "no", "céu", "depois", "da", "chuva?"], "resposta": "Arco-íris" },
+            { "id": 56, "pergunta": ["Como", "se", "chama", "o", "dia", "que", "vem", "após", "hoje?"], "resposta": "Amanhã" },
+            { "id": 57, "pergunta": ["Qual", "é", "a", "fórmula", "química", "universal", "da", "água?"], "resposta": "H2O" },
+            { "id": 58, "pergunta": ["Qual", "cidade", "é", "a", "capital", "do", "nosso", "vizinho", "Argentina?"], "resposta": "Buenos Aires" },
+            { "id": 59, "pergunta": ["Onde", "vamos", "para", "tomar", "banho", "de", "mar", "no", "verão?"], "resposta": "Praia" },
+            { "id": 60, "pergunta": ["Como", "se", "chama", "o", "rato", "mais", "famoso", "da", "Disney?"], "resposta": "Mickey" },
+            { "id": 61, "pergunta": ["O", "que", "a", "borboleta", "era", "antes", "de", "ter", "asas?"], "resposta": "Lagarta" },
+            { "id": 62, "pergunta": ["O", "que", "usamos", "na", "fechadura", "para", "abrir", "uma", "porta?"], "resposta": "Chave" },
+            { "id": 63, "pergunta": ["Quantos", "lados", "possui", "uma", "figura", "geométrica", "chamada", "triângulo?"], "resposta": "Três" },
+            { "id": 64, "pergunta": ["Qual", "estação", "do", "ano", "é", "famosa", "pelas", "flores?"], "resposta": "Primavera" },
+            { "id": 65, "pergunta": ["Qual", "aeronave", "voa", "usando", "hélices", "no", "lugar", "de", "asas?"], "resposta": "Helicóptero" },
+            { "id": 66, "pergunta": ["Que", "mamífero", "voa", "e", "costuma", "dormir", "de", "cabeça", "para", "baixo?"], "resposta": "Morcego" },
+            { "id": 67, "pergunta": ["Qual", "parte", "do", "computador", "possui", "letras", "para", "digitar?"], "resposta": "Teclado" },
+            { "id": 68, "pergunta": ["Quem", "chamamos", "para", "apagar", "um", "incêndio", "na", "cidade?"], "resposta": "Bombeiro" },
+            { "id": 69, "pergunta": ["O", "que", "calçamos", "nos", "pés", "antes", "de", "sair", "de", "casa?"], "resposta": "Sapato" },
+            { "id": 70, "pergunta": ["Qual", "é", "o", "maior", "mamífero", "que", "vive", "nos", "oceanos?"], "resposta": "Baleia Azul" },
+            { "id": 71, "pergunta": ["Em", "que", "lugar", "as", "crianças", "aprendem", "a", "ler", "e", "escrever?"], "resposta": "Escola" },
+            { "id": 72, "pergunta": ["Qual", "fruta", "é", "verde", "por", "fora", "e", "vermelha", "por", "dentro?"], "resposta": "Melancia" },
+            { "id": 73, "pergunta": ["Qual", "estrela", "aquece", "a", "Terra", "durante", "o", "dia?"], "resposta": "Sol" },
+            { "id": 74, "pergunta": ["Em", "que", "país", "ficam", "as", "grandes", "pirâmides", "antigas?"], "resposta": "Egito" },
+            { "id": 75, "pergunta": ["De", "que", "material", "vindo", "das", "árvores", "é", "feito", "o", "papel?"], "resposta": "Celulose" },
+            { "id": 76, "pergunta": ["Qual", "ave", "branca", "e", "preta", "vive", "no", "gelo", "e", "não", "voa?"], "resposta": "Pinguim" },
+            { "id": 77, "pergunta": ["Qual", "é", "o", "contrário", "da", "sensação", "de", "frio?"], "resposta": "Quente" },
+            { "id": 78, "pergunta": ["Qual", "médico", "devemos", "visitar", "para", "cuidar", "dos", "dentes?"], "resposta": "Dentista" },
+            { "id": 79, "pergunta": ["O", "que", "usamos", "para", "medir", "a", "temperatura", "do", "corpo?"], "resposta": "Termômetro" },
+            { "id": 80, "pergunta": ["Qual", "cidade", "é", "a", "famosa", "capital", "da", "Inglaterra?"], "resposta": "Londres" },
+            { "id": 81, "pergunta": ["Onde", "devemos", "levar", "uma", "carta", "para", "ser", "enviada?"], "resposta": "Correio" },
+            { "id": 82, "pergunta": ["Qual", "animal", "é", "famoso", "por", "se", "mover", "muito", "devagar?"], "resposta": "Bicho-preguiça" },
+            { "id": 83, "pergunta": ["Que", "roupa", "confortável", "usamos", "geralmente", "para", "dormir", "a", "noite?"], "resposta": "Pijama" },
+            { "id": 84, "pergunta": ["Quantos", "jogadores", "titulares", "tem", "um", "time", "de", "futebol?"], "resposta": "11" },
+            { "id": 85, "pergunta": ["Qual", "gás", "nós", "precisamos", "respirar", "para", "sobreviver?"], "resposta": "Oxigênio" },
+            { "id": 86, "pergunta": ["O", "que", "usamos", "para", "desembaraçar", "e", "arrumar", "o", "cabelo?"], "resposta": "Pente" },
+            { "id": 87, "pergunta": ["Como", "se", "chama", "a", "fêmea", "da", "espécie", "do", "cavalo?"], "resposta": "Égua" },
+            { "id": 88, "pergunta": ["Qual", "doce", "marrom", "é", "produzido", "a", "partir", "do", "cacau?"], "resposta": "Chocolate" },
+            { "id": 89, "pergunta": ["Qual", "continente", "fica", "no", "extremo", "sul", "do", "planeta?"], "resposta": "Antártida" },
+            { "id": 90, "pergunta": ["O", "que", "o", "filho", "do", "seu", "tio", "é", "seu?"], "resposta": "Primo" },
+            { "id": 91, "pergunta": ["Que", "talher", "de", "metal", "usamos", "para", "cortar", "carne?"], "resposta": "Faca" },
+            { "id": 92, "pergunta": ["Qual", "transporte", "enorme", "é", "usado", "para", "viajar", "pelo", "mar?"], "resposta": "Navio" },
+            { "id": 93, "pergunta": ["Que", "anfíbio", "verde", "pula", "e", "come", "moscas", "no", "brejo?"], "resposta": "Sapo" },
+            { "id": 94, "pergunta": ["Que", "nome", "damos", "a", "um", "medo", "muito", "intenso?"], "resposta": "Pânico" },
+            { "id": 95, "pergunta": ["Em", "qual", "instituição", "o", "nosso", "dinheiro", "fica", "guardado?"], "resposta": "Banco" },
+            { "id": 96, "pergunta": ["Qual", "parte", "da", "árvore", "fica", "escondida", "embaixo", "da", "terra?"], "resposta": "Raiz" },
+            { "id": 97, "pergunta": ["O", "que", "sopramos", "em", "cima", "do", "bolo", "de", "aniversário?"], "resposta": "Velas" },
+            { "id": 98, "pergunta": ["Qual", "líquido", "branco", "a", "vaca", "produz", "para", "os", "bezerros?"], "resposta": "Leite" },
+            { "id": 99, "pergunta": ["Quem", "foi", "o", "cantor", "chamado", "de", "Rei", "do", "Pop?"], "resposta": "Michael Jackson" },
+            { "id": 100, "pergunta": ["Para", "qual", "objeto", "olhamos", "quando", "queremos", "saber", "as", "horas?"], "resposta": "Relógio" }
+          ]
+        };
+
+        // === LÓGICA DO JOGO ===
+        
+        let currentScore = 0;
+        
+        const idDisplay = document.getElementById('question-id');
+        const scoreDisplay = document.getElementById('score-display');
+        const wordsContainer = document.getElementById('words-container');
+        const answerBox = document.getElementById('answer-box');
+        const answerText = document.getElementById('answer-text');
+        const answerLabel = document.getElementById('answer-label');
+        const btnNext = document.getElementById('btn-next');
+
+        // Função para inicializar uma nova pergunta
+        function loadQuestion() {
+            // Reseta o visual da resposta
+            answerBox.classList.remove('revealed');
+            answerLabel.style.display = 'block';
+            answerText.textContent = '...';
+            
+            // Sorteia um índice aleatório
+            const randomIndex = Math.floor(Math.random() * db.perguntas.length);
+            const questionData = db.perguntas[randomIndex];
+
+            // Atualiza UI
+            idDisplay.textContent = `#${questionData.id}`;
+            currentScore = 0;
+            updateScoreDisplay();
+
+            // Prepara a resposta
+            answerText.textContent = questionData.resposta;
+
+            // Limpa container de palavras e cria as novas
+            wordsContainer.innerHTML = '';
+            
+            questionData.pergunta.forEach((word, index) => {
+                // Cria o elemento HTML da caixa
+                const wordSlot = document.createElement('div');
+                wordSlot.className = 'word-slot';
+                
+                // Número visível
+                const numberSpan = document.createElement('span');
+                numberSpan.className = 'slot-number';
+                numberSpan.textContent = index + 1; // Ordem 1 a 10
+
+                // Palavra oculta
+                const wordSpan = document.createElement('span');
+                wordSpan.className = 'word-text';
+                wordSpan.textContent = word;
+
+                wordSlot.appendChild(numberSpan);
+                wordSlot.appendChild(wordSpan);
+
+                // Evento de clique
+                wordSlot.addEventListener('click', () => {
+                    if (!wordSlot.classList.contains('revealed')) {
+                        wordSlot.classList.add('revealed');
+                        // Lógica de pontuação: soma o índice (index + 1)
+                        addScore(index + 1);
+                    }
+                });
+
+                wordsContainer.appendChild(wordSlot);
+            });
+        }
+
+        function addScore(points) {
+            currentScore += points;
+            updateScoreDisplay();
+        }
+
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = currentScore;
+        }
+
+        function revealAnswer() {
+            answerBox.classList.add('revealed');
+            answerLabel.style.display = 'none';
+        }
+
+        // Event Listeners
+        btnNext.addEventListener('click', loadQuestion);
+
+        // Inicia o jogo ao carregar
+        loadQuestion();
+
+    </script>
+</body>
+</html>
