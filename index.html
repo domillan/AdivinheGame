@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Adivinhe - Pergunta e Resposta</title>
     <style>
         :root {
@@ -15,8 +15,11 @@
             --box-text-rev: #000000;
             --accent: #03dac6;
             --danger: #cf6679;
-            --trap-color: #ffab91; /* Cor para caixas vazias */
+            --success: #4caf50;
+            --trap-color: #ffab91;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Roboto', 'Segoe UI', sans-serif;
@@ -27,58 +30,58 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            user-select: none; /* Impede seleção de texto ao clicar rápido */
+            user-select: none;
+            padding-bottom: 40px;
         }
 
-        /* --- HUD / PLACAR --- */
+        /* --- HUD --- */
         .hud {
             position: sticky;
             top: 0;
-            background-color: rgba(30, 30, 30, 0.95);
+            background-color: rgba(30, 30, 30, 0.98);
             width: 100%;
             max-width: 600px;
-            padding: 15px;
+            padding: 10px 20px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             z-index: 100;
             display: flex;
             justify-content: space-between;
             align-items: center;
             backdrop-filter: blur(5px);
+            border-bottom: 1px solid #333;
         }
 
-        .score-container {
-            text-align: center;
-        }
-
-        .score-label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
-        .score-value { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
-        .q-counter { font-size: 0.8rem; color: #666; }
+        .score-container { text-align: center; flex-grow: 1; }
+        .score-label { font-size: 0.65rem; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .score-value { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
+        .q-counter { font-size: 0.8rem; color: #888; width: 80px; }
 
         .btn-reset {
             background: transparent;
-            border: 1px solid #444;
-            color: #666;
-            padding: 5px 10px;
+            border: 1px solid #555;
+            color: #888;
+            padding: 6px 12px;
             font-size: 0.7rem;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 20px;
+            width: 80px;
+            text-align: center;
         }
 
-        /* --- ÁREA DO JOGO --- */
+        /* --- GAME AREA --- */
         .game-area {
             width: 100%;
             max-width: 500px;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             gap: 8px;
         }
 
-        /* --- ESTILO DAS CAIXAS (SLOTS) --- */
         .slot {
             height: 55px;
             background-color: var(--box-hidden);
-            border-radius: 8px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -87,47 +90,27 @@
             transition: transform 0.1s, background-color 0.2s;
             border: 2px solid #333;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            touch-action: manipulation; 
         }
 
-        .slot:active { transform: scale(0.98); }
+        .slot:active { transform: scale(0.97); }
+        .slot-num { font-size: 1.2rem; font-weight: bold; color: #555; }
+        .slot-content { display: none; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; text-align: center; }
 
-        /* Número indicador (1 a 10) */
-        .slot-num {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #555;
-        }
-
-        /* Texto da palavra (Oculto por padrão) */
-        .slot-content {
-            display: none;
-            font-size: 1.1rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            text-align: center;
-        }
-
-        /* --- ESTADOS DA CAIXA --- */
-        
-        /* Aberta */
         .slot.revealed {
             background-color: var(--box-revealed);
             border-color: var(--on-surface);
+            cursor: default;
         }
         .slot.revealed .slot-num { display: none; }
         .slot.revealed .slot-content { display: block; color: var(--box-text-rev); }
 
-        /* Armadilha (Caixa vazia) */
         .slot.revealed.trap {
             background-color: var(--trap-color);
             border-color: var(--danger);
         }
-        .slot.revealed.trap .slot-content {
-            color: #bf360c;
-            font-size: 0.9rem;
-        }
+        .slot.revealed.trap .slot-content { color: #bf360c; font-size: 0.9rem; }
 
-        /* Indicador de "Já foi aberto" (*) */
         .was-opened::after {
             content: '*';
             position: absolute;
@@ -137,22 +120,17 @@
             font-size: 1.2rem;
             font-weight: bold;
         }
-        /* Esconde o asterisco se a caixa estiver aberta no momento, 
-           pois o conteúdo é mais importante. Mostra apenas quando fecha. */
-        .slot.revealed.was-opened::after {
-            display: none; 
-        }
+        .slot.revealed.was-opened::after { display: none; }
 
-        /* --- BOTÃO DE RESPOSTA --- */
+        /* --- BOTÕES E RESPOSTA --- */
         .answer-container {
-            margin-top: 20px;
+            margin-top: 10px;
             width: 100%;
             text-align: center;
+            padding-bottom: 10px;
         }
 
-        .btn-answer {
-            background: linear-gradient(45deg, #d32f2f, #c62828);
-            color: white;
+        .btn-main {
             width: 100%;
             padding: 18px;
             border: none;
@@ -160,36 +138,90 @@
             font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
-            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: linear-gradient(45deg, #7c4dff, #651fff);
+            color: white;
         }
-
-        .btn-answer.show {
-            background: linear-gradient(45deg, #388e3c, #4caf50);
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-            cursor: default;
-        }
+        
+        .btn-main:active { transform: scale(0.98); }
 
         .answer-text {
             display: none;
-            font-size: 1.3rem;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-size: 1.6rem;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: var(--accent);
+            animation: popIn 0.3s ease;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* Botão Próxima (Só aparece no final) */
-        .btn-next {
+        /* Botões de Decisão (Ocultos inicialmente) */
+        .decision-buttons {
             display: none;
-            margin-top: 15px;
-            background-color: var(--primary);
-            color: white;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-decision {
+            flex: 1;
             padding: 15px;
-            width: 100%;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
+            color: white;
+            text-transform: uppercase;
         }
+
+        .btn-correct { background-color: var(--success); box-shadow: 0 4px 0 #2e7d32; }
+        .btn-wrong { background-color: var(--danger); box-shadow: 0 4px 0 #c62828; }
+        .btn-decision:active { transform: translateY(2px); box-shadow: none; }
+
+        /* --- HISTÓRICO --- */
+        .history-section {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 30px;
+            border-top: 1px solid #333;
+            padding: 20px 15px;
+        }
+
+        .history-title {
+            font-size: 0.8rem;
+            color: #666;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #555;
+        }
+
+        .history-item.win { border-left-color: var(--success); }
+        .history-item.loss { border-left-color: var(--danger); }
+
+        .h-info { display: flex; flex-direction: column; }
+        .h-ans { font-size: 0.9rem; font-weight: bold; color: #eee; }
+        .h-pts { font-size: 0.9rem; font-weight: bold; }
+        .h-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
 
         @keyframes popIn {
             from { transform: scale(0.5); opacity: 0; }
@@ -202,17 +234,23 @@
             color: var(--accent);
         }
 
+        @media (max-width: 480px) {
+            .hud { padding: 8px 15px; }
+            .game-area { padding: 10px; gap: 6px; }
+            .slot { height: 50px; }
+            .slot-content { font-size: 1rem; }
+        }
     </style>
 </head>
 <body>
 
     <div class="hud">
-        <div class="q-counter" id="q-counter">Pergunta: --</div>
+        <div class="q-counter" id="q-counter">ID: --</div>
         <div class="score-container">
-            <div class="score-label">Pontos Gastos</div>
+            <div class="score-label">Custo Atual</div>
             <div class="score-value" id="score-display">0</div>
         </div>
-        <button class="btn-reset" onclick="resetAllData()">Resetar Save</button>
+        <button class="btn-reset" onclick="resetAllData()">Resetar</button>
     </div>
 
     <div class="game-area" id="game-area">
@@ -220,12 +258,25 @@
 
     <div class="game-area">
         <div class="answer-container">
-            <button id="btn-answer" class="btn-answer" onclick="revealAnswer()">
-                <span id="lbl-answer">REVELAR RESPOSTA</span>
-                <span id="txt-answer" class="answer-text">--</span>
+            
+            <button id="btn-reveal" class="btn-main" onclick="revealAnswer()">
+                REVELAR RESPOSTA
             </button>
-            <button id="btn-next" class="btn-next" onclick="nextQuestion()">PRÓXIMA PERGUNTA &rarr;</button>
+
+            <div id="txt-answer" class="answer-text">--</div>
+
+            <div id="decision-area" class="decision-buttons">
+                <button class="btn-decision btn-correct" onclick="handleResult(true)">Acertei</button>
+                <button class="btn-decision btn-wrong" onclick="handleResult(false)">Errei (+25)</button>
+            </div>
+
         </div>
+    </div>
+
+    <div class="history-section">
+        <div class="history-title">Histórico da Sessão</div>
+        <div id="history-list" class="history-list">
+            </div>
     </div>
 
     <script>
@@ -235,22 +286,23 @@
 
         // --- ESTADO DO JOGO ---
         let currentQuestion = null;
-        let currentScore = 0;
-        let isAnswerRevealed = false;
+        let currentCost = 0; // Pontos gastos na rodada atual
+        let isRoundOver = false;
         let availableQuestions = [];
+        let db = [];
 
         // Elementos DOM
         const elGameArea = document.getElementById('game-area');
         const elScore = document.getElementById('score-display');
         const elQCounter = document.getElementById('q-counter');
-        const elBtnAnswer = document.getElementById('btn-answer');
-        const elLblAnswer = document.getElementById('lbl-answer');
+        const elBtnReveal = document.getElementById('btn-reveal');
         const elTxtAnswer = document.getElementById('txt-answer');
-        const elBtnNext = document.getElementById('btn-next');
+        const elDecisionArea = document.getElementById('decision-area');
+        const elHistoryList = document.getElementById('history-list');
 
         // --- INICIALIZAÇÃO ---
         function init() {
-		filterPlayedQuestions();
+            filterPlayedQuestions();
             loadNextQuestion();
         }
 
@@ -269,22 +321,21 @@
                 return;
             }
 
-            // Reset visual
-            isAnswerRevealed = false;
-            currentScore = 0;
+            // Reset Visual
+            isRoundOver = false;
+            currentCost = 0;
             updateScoreUI();
-            elBtnAnswer.classList.remove('show');
-            elBtnAnswer.disabled = false;
-            elLblAnswer.style.display = 'inline';
+            
+            elBtnReveal.style.display = 'block';
             elTxtAnswer.style.display = 'none';
-            elBtnNext.style.display = 'none';
+            elDecisionArea.style.display = 'none';
             elGameArea.innerHTML = '';
 
             // Sorteia pergunta
             const randIndex = Math.floor(Math.random() * availableQuestions.length);
             currentQuestion = availableQuestions[randIndex];
 
-            elQCounter.textContent = `Pergunta ID: ${currentQuestion.id}`;
+            elQCounter.textContent = `ID: ${currentQuestion.id}`;
 
             // Renderiza os 10 Slots
             for (let i = 0; i < TOTAL_SLOTS; i++) {
@@ -295,17 +346,15 @@
         function createSlot(index) {
             const slot = document.createElement('div');
             slot.classList.add('slot');
+            slot.id = `slot-${index}`; // ID para manipular depois
             
-            // Define se é palavra real ou armadilha
             const isRealWord = index < currentQuestion.p.length;
-            const contentText = isRealWord ? currentQuestion.p[index] : `- ${index + 1} Pontos`;
+            const contentText = isRealWord ? currentQuestion.p[index] : `- ${index + 1}`;
             
             if (!isRealWord) {
-                // Marcador interno para saber que é trap na hora do clique
                 slot.dataset.isTrap = "true";
             }
 
-            // HTML interno
             const numSpan = document.createElement('span');
             numSpan.className = 'slot-num';
             numSpan.textContent = index + 1;
@@ -317,54 +366,102 @@
             slot.appendChild(numSpan);
             slot.appendChild(contentSpan);
 
-            // Evento de Clique
             slot.onclick = () => toggleSlot(slot, index, isRealWord);
 
             elGameArea.appendChild(slot);
         }
 
         function toggleSlot(slotElement, index, isRealWord) {
-            //if (isAnswerRevealed) return; // Trava se já revelou a resposta
+            if (isRoundOver) return; // Trava cliques após revelar
 
             const cost = index + 1;
             const isRevealed = slotElement.classList.contains('revealed');
 
             if (isRevealed) {
-                // Ação: Ocultar (Undo)
+                // Desfazer (Ocultar)
                 slotElement.classList.remove('revealed');
-                currentScore -= cost;
-                // Nota: Não removemos 'was-opened', o asterisco aparecerá via CSS
+                currentCost -= cost;
             } else {
-                // Ação: Revelar
+                // Revelar
                 slotElement.classList.add('revealed');
-                slotElement.classList.add('was-opened'); // Marca histórico
+                slotElement.classList.add('was-opened'); 
                 if (slotElement.dataset.isTrap) {
                     slotElement.classList.add('trap');
                 }
-                currentScore += cost;
+                currentCost += cost;
             }
 
             updateScoreUI();
         }
 
         function updateScoreUI() {
-            elScore.textContent = currentScore;
+            elScore.textContent = currentCost;
         }
 
         function revealAnswer() {
-            if (isAnswerRevealed) return;
-            
-            isAnswerRevealed = true;
+            if (isRoundOver) return;
+            isRoundOver = true; // Trava custo
 
-            // UI Updates
-            elBtnAnswer.classList.add('show');
-            elLblAnswer.style.display = 'none';
+            // 1. Revelar todas as caixas (apenas visual, sem somar custo)
+            const allSlots = document.querySelectorAll('.slot');
+            allSlots.forEach(slot => {
+                slot.classList.add('revealed');
+                // Não adicionamos 'was-opened' ou somamos pontos aqui
+                // Apenas mostramos para o usuário ler a pergunta inteira
+            });
+
+            // 2. Mostrar resposta e botões
+            elBtnReveal.style.display = 'none';
             elTxtAnswer.textContent = currentQuestion.r;
             elTxtAnswer.style.display = 'block';
-            elBtnNext.style.display = 'block';
+            elDecisionArea.style.display = 'flex';
+        }
 
-            // Salvar no LocalStorage
+        function handleResult(userSaidCorrect) {
+            // Calcular pontuação final
+            // Se acertou: mantém o custo. Se errou: custo + 25
+            let finalPoints = currentCost;
+            if (!userSaidCorrect) {
+                finalPoints += 25;
+            }
+
+            // Adicionar ao histórico
+            addToHistoryUI(currentQuestion.r, finalPoints, userSaidCorrect);
+
+            // Salvar progresso
             saveProgress(currentQuestion.id);
+
+            // Ir para próxima
+            loadNextQuestion();
+        }
+
+        function addToHistoryUI(answer, points, isWin) {
+            const item = document.createElement('div');
+            item.className = `history-item ${isWin ? 'win' : 'loss'}`;
+
+            const divInfo = document.createElement('div');
+            divInfo.className = 'h-info';
+            
+            const spanLabel = document.createElement('span');
+            spanLabel.className = 'h-label';
+            spanLabel.textContent = isWin ? 'ACERTOU' : 'ERROU (+25)';
+            
+            const spanAns = document.createElement('span');
+            spanAns.className = 'h-ans';
+            spanAns.textContent = answer;
+
+            divInfo.appendChild(spanLabel);
+            divInfo.appendChild(spanAns);
+
+            const divPts = document.createElement('div');
+            divPts.className = 'h-pts';
+            divPts.style.color = isWin ? 'var(--success)' : 'var(--danger)';
+            divPts.textContent = `${points} pts`;
+
+            item.appendChild(divInfo);
+            item.appendChild(divPts);
+
+            elHistoryList.prepend(item);
         }
 
         function saveProgress(id) {
@@ -373,32 +470,27 @@
                 playedIds.push(id);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(playedIds));
             }
-            // Remove a pergunta jogada da lista atual na memória RAM também
             availableQuestions = availableQuestions.filter(q => q.id !== id);
         }
 
-        function nextQuestion() {
-            loadNextQuestion();
-        }
-
         function showGameOver() {
-            elGameArea.innerHTML = '<div class="game-over"><h2>Parabéns!</h2><p>Você respondeu todas as 300 perguntas!</p></div>';
-            elBtnAnswer.style.display = 'none';
-            elBtnNext.style.display = 'none';
+            elGameArea.innerHTML = '<div class="game-over"><h2>Parabéns!</h2><p>Todas as perguntas foram respondidas.</p></div>';
+            elBtnReveal.style.display = 'none';
+            elDecisionArea.style.display = 'none';
+            elTxtAnswer.style.display = 'none';
         }
 
         function resetAllData() {
-            if(confirm("Tem certeza que deseja apagar todo o histórico e recomeçar?")) {
+            if(confirm("Apagar histórico e recomeçar?")) {
                 localStorage.removeItem(STORAGE_KEY);
                 location.reload();
             }
         }
 
-        // Iniciar Jogo
+	// Iniciar Jogo
 	let db = [];
 	fetch('dados.json').then(r => r.json()).then(d => { db = d; init(); });
 
     </script>
 </body>
-
 </html>
